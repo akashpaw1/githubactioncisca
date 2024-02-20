@@ -1,0 +1,88 @@
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: ./WebApplication1
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # - name: Setup .NET SDK
+      #   uses: actions/setup-dotnet@v1
+      #   with:
+      #     dotnet-version: 4.6.1
+      
+      - name: Sonarqube begin
+        # env:
+        #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+        #    shell: powershell
+        run: 
+           D:\sonarScanner\SonarScanner.MSBuild.exe begin /k:"GihubAction" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
+     
+      - name: Setup MSBuild path
+        uses: microsoft/setup-msbuild@v1.0.2
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
+ 
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.0.5
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
+ 
+
+      - name: Restore NuGet packages
+        run: nuget restore
+
+ 
+
+      - name: Publish to folder/build project
+        # run: msbuild /nologo /verbosity:m /t:Build /t:pipelinePreDeployCopyAllFilesToOneFolder /p:_PackageTempDir="\published\"
+        run: msbuild /t:Build /p:Configuration=Release WebApplication1.sln
+
+      # - name: Run Code Coverage
+      #   run: dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+
+      # - name: Publish Code Coverage Results
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #    name: code-coverage
+      #    path: '**/coverage.opencover.xml'
+
+      # - name: Generate Code Coverage Report
+      #   run: |
+      #    ReportGenerator.exe -reports:**/coverage.opencover.xml -targetdir:coverage-report -reporttypes:Html
+      #    mv coverage-report $GITHUB_WORKSPACE/coverage-report
+
+      - name: Sonarqube build
+        # env:
+        #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+        #    shell: powershell
+        run: 
+           # D:\sonarScanner\SonarScanner.MSBuild.exe build
+           MSBuild.exe WebApplication1.sln
+           
+
+           
+      - name: Sonarqube End
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+        #   shell: powershell
+        run: 
+           D:\sonarScanner\SonarScanner.MSBuild.exe end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v2
+        with:
+          name: ASP-app
+          path: '/published/**'
